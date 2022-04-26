@@ -1,12 +1,13 @@
 # load files and data frames
 # source("./load-files.R")
-## Duration sessions ----------------------------------------------------------------
+## Duration sessions----------------------------------------------------------------
 
 # BARPLOT - Duration session
 ggplot(data = modes.df, aes(x = p, y = durSeconds/60), fill = durSeconds/60) +
   geom_bar(stat="identity") + 
   ggtitle("Durations Sessions") +
   xlab("Participants") + ylab("Time (minutes)") 
+  #test
 
 # BARPLOT - DURATION session and MODE 
 ggplot(data = modes.df, aes(x = factor(mode), y = durSeconds/60), fill = p) +
