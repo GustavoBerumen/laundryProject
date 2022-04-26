@@ -4,12 +4,14 @@
 # install.packages("dplyr")
 # install.packages("chron")
 # install.packages("ggplot2")
+# install.packages("ggpubr")
 
 library(readxl)
 library(magrittr) 
 library(dplyr)
 library(chron)
 library(ggplot2)
+library(ggpubr)
 
 # ================ [1.0] load files ================ 
 
@@ -32,6 +34,10 @@ file.list <- list.files(pattern = "p1[0-9]{2}.xlsx", full.names = TRUE)
 sample.file <- list.files(pattern = "sample", full.names = TRUE)
 modes.df <- as.data.frame(read_excel(sample.file, sheet = "modes"))
 
+# frequency modes table
+freqMode <- modes.df %>%
+  group_by(mode) %>%
+  summarise(total = length(p))
 
 # set global participant variable
 participants <- length(file.list)
@@ -87,13 +93,28 @@ for (i in 1:2){
   # for items df
   items.df[[i]] <- as.POSIXct(items.df[[i]], format = "%Y-%m-%d %H:%M")
   items.df[[i]] <- times(strftime(items.df[[i]], format="%H:%M:%S"))
+  # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
+  items.df[[i]] <- gsub(" ", "", paste("00:", as.character(items.df[[i]])))
+  items.df[[i]] <- substr(items.df[[i]] , 1, 8)
+  items.df[[i]] <- strptime(items.df[[i]], format = "%H:%M:%S")
+  items.df[[i]] <- times(strftime(items.df[[i]], format="%H:%M:%S"))
   
   # for head df
   head.df[[i]] <- as.POSIXct(head.df[[i]], format = "%Y-%m-%d %H:%M")
   head.df[[i]] <- times(strftime(head.df[[i]], format="%H:%M:%S"))
+  # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
+  head.df[[i]] <- gsub(" ", "", paste("00:", as.character(head.df[[i]])))
+  head.df[[i]] <- substr(head.df[[i]] , 1, 8)
+  head.df[[i]] <- strptime(head.df[[i]], format = "%H:%M:%S")
+  head.df[[i]] <- times(strftime(head.df[[i]], format="%H:%M:%S"))
   
   # for body df
   body.df[[i]] <- as.POSIXct(body.df[[i]], format = "%Y-%m-%d %H:%M")
+  body.df[[i]] <- times(strftime(body.df[[i]], format="%H:%M:%S"))
+  # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
+  body.df[[i]] <- gsub(" ", "", paste("00:", as.character(body.df[[i]])))
+  body.df[[i]] <- substr(body.df[[i]] , 1, 8)
+  body.df[[i]] <- strptime(body.df[[i]], format = "%H:%M:%S")
   body.df[[i]] <- times(strftime(body.df[[i]], format="%H:%M:%S"))
 }
 
@@ -106,6 +127,108 @@ names(items.df)[1:4] <- c("start", "end", "itemBetween", "comments")
 library(tidyverse)
 str_sub(body.df$bodyPosture, 1, 1) <- str_sub(body.df$bodyPosture, 1, 1) %>% str_to_upper()
 str_sub(body.df$handGesture, 1, 1) <- str_sub(body.df$handGesture, 1, 1) %>% str_to_upper()
+
+
+### GET duration of session and add that to column in modes.df
+
+# add empty duration column
+modes.df['duration'] <- as.times("00:00:00")
+
+# array participants
+pId <- as.array(modes.df[[1]])
+
+for (i in pId){
+  # filter p in body.df
+  bodyId <- body.df %>% 
+    filter(p == i)
+  # filter p in head.df
+  headId <- head.df %>% 
+    filter(p == i)
+  
+  # get smallest start in body
+  bodyStart <- (min(bodyId$start))
+  # get largest start in body
+  bodyEnd <- (max(bodyId$end))
+  
+  
+  # get smallest start in head
+  headStart <- (min(headId$start))
+  # get largest start in body
+  headEnd <- (max(headId$end))
+  
+  # get smallest Id
+  idStart <- min(bodyStart, headStart) 
+  # get largest Id
+  idEnd <- max(bodyEnd, headEnd) 
+  
+  # idTime
+  duration <- idEnd-idStart
+  
+  # add duration to modes.df
+  modes.df[modes.df$p == i, "duration"] <- as.times(duration)
+}
+# transform time to seconds 
+durTest <- strptime(modes.df$duration, format='%H:%M:%S')
+modes.df$durSeconds <- durTest$hour * 3600 + durTest$min * 60 + durTest$sec
+
+
+# identify and items to body.df entries
+
+# add empty item column to body.df 
+body.df$item <- NA
+# add empty item column to body.df 
+head.df$item <- NA
+
+# function to add identify and add item to body.df entries
+for (i in pId){
+  
+  # filter p in dfs
+  pItems <- items.df %>%
+    filter(p == i, itemBetween != "Between items")
+  
+  # iterate over items in filtered items.df
+  for (item in pItems$itemBetween){
+    # filter item
+    pthisItem <- pItems %>%
+      filter(itemBetween == item) 
+    
+    # get start and end time item
+    startItem <- pthisItem$start
+    endItem <- pthisItem$end
+    
+    # go through all the start times of an item
+    for (j in 1:length(startItem)){
+      
+      ### add items to body.df 
+      
+      # get items that meet the condition [start item in time range]
+      indStart <- (body.df$start >= startItem[j] &  body.df$start <= endItem[j] &  body.df$p == i)  # change to improve catching items in between times
+      # get items that meet the condition [end item in time range]
+      indEnd <- (body.df$end <= endItem[j] &  body.df$end >= startItem[j] &  body.df$p == i)  # catch entries END time in between range
+      
+      # identify index of TRUE cells
+      indRepS <- which(indStart %in% TRUE) # start
+      indRepE <- which(indEnd %in% TRUE) # end
+      indBoth <- c(indRepS, indRepE)
+      # add item to body.df
+      body.df[indBoth, 10] <- item
+      
+      
+      # add items to head.df 
+      # get items that meet the condition [start item in time range]
+      indStartH <- (head.df$start >= startItem[j] &  head.df$start <= endItem[j] &  head.df$p == i)  # change to improve catching items in between times
+      # get items that meet the condition [end item in time range]
+      indEndH <- (head.df$end <= endItem[j] &  head.df$end >= startItem[j] &  head.df$p == i)  # catch entries END time in between range
+      
+      # identify index of TRUE cells
+      indRepSH <- which(indStartH %in% TRUE) # start
+      indRepEH <- which(indEndH %in% TRUE) # end
+      indBothH <- c(indRepSH, indRepEH)
+      # add item to head.df
+      head.df[indBothH, 8] <- item
+    }
+  }
+}
 
 # set the directory back to the script source
 setwd("C:/Users/lpxjgb/OneDrive - The University of Nottingham/Desktop/___iVideos/analysis-interactions")
