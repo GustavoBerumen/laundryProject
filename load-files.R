@@ -42,8 +42,6 @@ freqMode <- modes.df %>%
 
 # set global participant variable
 participants <- length(file.list)
-#participants <- 10 # dummy to find the erronous speech data sets
-
 
 # initialize empty lists objects
 items.list <- vector("list", length(file.list))
@@ -101,8 +99,7 @@ for (p in 1:participants){
 
 }
 
-# find elements that do not match between speech.list column names
-# used to find the column names that did not match, no longer needed 
+# find elements that do not match between speech.list column names. Used to find the column names that did not match, no longer needed 
 # for (p in 1:participants){
 #   print(p)
 #   print(setdiff(colnames(speech.list[[1]]), colnames(speech.list[[p]])))
@@ -113,12 +110,13 @@ items.df <- do.call("rbind", items.list)
 head.df <- do.call("rbind", head.list)
 body.df <- do.call("rbind", body.list)
 speech.df <- do.call("rbind", speech.list)
+speech.dummy <- speech.df # test to solve time issues 
 
-# fix time columns (transform excel to r format)
+# transform time columns (transform excel to r format)
 for (i in 1:2){
   # for items df
-  items.df[[i]] <- as.POSIXct(items.df[[i]], format = "%Y-%m-%d %H:%M")
-  items.df[[i]] <- times(strftime(items.df[[i]], format="%H:%M:%S"))
+  items.df[[i]] <- as.POSIXct(items.df[[i]], format = "%Y-%m-%d %H:%M", tz = "GMT") # needed to add time zone to solve issues
+  items.df[[i]] <- times(strftime(items.df[[i]], format="%H:%M:%S", tz = "GMT"))
   # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
   items.df[[i]] <- gsub(" ", "", paste("00:", as.character(items.df[[i]])))
   items.df[[i]] <- substr(items.df[[i]] , 1, 8)
@@ -126,8 +124,8 @@ for (i in 1:2){
   items.df[[i]] <- times(strftime(items.df[[i]], format="%H:%M:%S"))
   
   # for head df
-  head.df[[i]] <- as.POSIXct(head.df[[i]], format = "%Y-%m-%d %H:%M")
-  head.df[[i]] <- times(strftime(head.df[[i]], format="%H:%M:%S"))
+  head.df[[i]] <- as.POSIXct(head.df[[i]], format = "%Y-%m-%d %H:%M", tz = "GMT")
+  head.df[[i]] <- times(strftime(head.df[[i]], format="%H:%M:%S", tz = "GMT"))
   # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
   head.df[[i]] <- gsub(" ", "", paste("00:", as.character(head.df[[i]])))
   head.df[[i]] <- substr(head.df[[i]] , 1, 8)
@@ -135,8 +133,8 @@ for (i in 1:2){
   head.df[[i]] <- times(strftime(head.df[[i]], format="%H:%M:%S"))
   
   # for body df
-  body.df[[i]] <- as.POSIXct(body.df[[i]], format = "%Y-%m-%d %H:%M")
-  body.df[[i]] <- times(strftime(body.df[[i]], format="%H:%M:%S"))
+  body.df[[i]] <- as.POSIXct(body.df[[i]], format = "%Y-%m-%d %H:%M", tz = "GMT")
+  body.df[[i]] <- times(strftime(body.df[[i]], format="%H:%M:%S", tz = "GMT"))
   # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
   body.df[[i]] <- gsub(" ", "", paste("00:", as.character(body.df[[i]])))
   body.df[[i]] <- substr(body.df[[i]] , 1, 8)
@@ -144,14 +142,23 @@ for (i in 1:2){
   body.df[[i]] <- times(strftime(body.df[[i]], format="%H:%M:%S"))
   
   # for speech df
-  speech.df[[i]] <- as.POSIXct(speech.df[[i]], format = "%Y-%m-%d %H:%M")
-  speech.df[[i]] <- times(strftime(speech.df[[i]], format="%H:%M:%S"))
+  speech.df[[i]] <- as.POSIXct(speech.df[[i]], format = "%Y-%m-%d %H:%M", tz = "GMT")
+  speech.df[[i]] <- times(strftime(speech.df[[i]], format="%H:%M:%S", tz = "GMT"))
   # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
-  speech.df[[i]] <- gsub(" ", "", paste("00:", as.character(speech.df[[i]])))
+  #speech.df[[i]] <- gsub(" ", "", paste("00:", as.character(speech.df[[i]])))
   speech.df[[i]] <- substr(speech.df[[i]] , 1, 8)
   speech.df[[i]] <- strptime(speech.df[[i]], format = "%H:%M:%S")
   speech.df[[i]] <- times(strftime(speech.df[[i]], format="%H:%M:%S"))
 }
+
+# fix speech time
+speech.dummy[[i]][p] <- as.POSIXct(speech.dummy[[i]][p], format = "%Y-%m-%d %H:%M", tz = "GMT")
+speech.dummy[[i]][p] <- times(strftime(speech.dummy[[i]][p], format="%H:%M:%S", tz = "GMT"))
+speech.dummy[[i]][p] <- gsub(" ", "", paste("00:", as.character(speech.dummy[[i]][p])))
+speech.dummy[[i]] <- substr(speech.dummy[[i]][p] , 1, 8)
+speech.dummy[[i]] <- strptime(speech.dummy[[i]], format = "%H:%M:%S")
+speech.dummy[[i]] <- times(strftime(speech.dummy[[i]], format="%H:%M:%S"))
+
 
 # rename columns data frame (shorter names)
 names(body.df)[1:7] <- c("start", "end", "bodyPosture", "handGesture", "postureObject", "gestureObject", "comments")
