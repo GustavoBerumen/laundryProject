@@ -12,6 +12,7 @@ library(dplyr)
 library(chron)
 library(ggplot2)
 library(ggpubr)
+library(tidyverse)
 
 # ================ [1.0] load files ================ 
 
@@ -41,23 +42,26 @@ freqMode <- modes.df %>%
 
 # set global participant variable
 participants <- length(file.list)
+#participants <- 10 # dummy to find the erronous speech data sets
 
 
 # initialize empty lists objects
 items.list <- vector("list", length(file.list))
 head.list <- vector("list", length(file.list))
 body.list <- vector("list", length(file.list))
+speech.list <- vector("list", length(file.list))
 
 # assign files to a list
 for (i in 1:length(file.list)){
   items.list[[i]] <- as.data.frame(read_excel(file.list[i],  sheet = "Items"))
   head.list[[i]] <- as.data.frame(read_excel(file.list[i],  sheet = "Head Eye Face"))
   body.list[[i]] <- as.data.frame(read_excel(file.list[i],  sheet = "Body Posture Hand"))
+  speech.list[[i]] <- as.data.frame(read_excel(file.list[i],  sheet = "Speech"))
 }
 
 # store lists into a data structure
-df.lists <- list(items.list, head.list, body.list)
-lists_names <- c("items", "head", "body")
+df.lists <- list(items.list, head.list, body.list, speech.list)
+lists_names <- c("items", "head", "body", "speech")
 
 # select columns from data frames
 for (l in 1:length(df.lists)){
@@ -67,7 +71,7 @@ for (l in 1:length(df.lists)){
   
   for (p in 1:participants){
     
-    # add participant column 
+    # add participant column (+100 because participants are named from 101)
     this.list[[p]]$p <- rep(p+100, length(this.list[[p]][[1]]))
     # add mode column
     this.list[[p]]$mode <- modes.df$mode[match(this.list[[p]]$p, modes.df$p)]
@@ -78,15 +82,37 @@ for (l in 1:length(df.lists)){
     items.list <- this.list
   } else if (l == 2){
     head.list <- this.list
-  }  else if (l == 3) {
+  } else if (l == 3) {
     body.list <- this.list
+  } else if (l == 4) {
+    speech.list <- this.list
   }
 }
+
+# fix speech.list column name (replace "action -verb" for "action - verb")
+for (p in 1:participants){
+  colnames(speech.list[[p]])[11] <- "Action word - verb"
+  colnames(speech.list[[p]])[4] <- "Item OR between items"
+  
+  # fix p28
+  if (p == 28){
+    colnames(speech.list[[p]])[c(5,6)] <- colnames(speech.list[[1]])[c(5,6)]
+  }  
+
+}
+
+# find elements that do not match between speech.list column names
+# used to find the column names that did not match, no longer needed 
+# for (p in 1:participants){
+#   print(p)
+#   print(setdiff(colnames(speech.list[[1]]), colnames(speech.list[[p]])))
+#   }
 
 # create concatenated df of reg and new
 items.df <- do.call("rbind", items.list)
 head.df <- do.call("rbind", head.list)
 body.df <- do.call("rbind", body.list)
+speech.df <- do.call("rbind", speech.list)
 
 # fix time columns (transform excel to r format)
 for (i in 1:2){
@@ -116,17 +142,28 @@ for (i in 1:2){
   body.df[[i]] <- substr(body.df[[i]] , 1, 8)
   body.df[[i]] <- strptime(body.df[[i]], format = "%H:%M:%S")
   body.df[[i]] <- times(strftime(body.df[[i]], format="%H:%M:%S"))
+  
+  # for speech df
+  speech.df[[i]] <- as.POSIXct(speech.df[[i]], format = "%Y-%m-%d %H:%M")
+  speech.df[[i]] <- times(strftime(speech.df[[i]], format="%H:%M:%S"))
+  # move positions to the right (i.e. convert hours to minutes and minutes to seconds)
+  speech.df[[i]] <- gsub(" ", "", paste("00:", as.character(speech.df[[i]])))
+  speech.df[[i]] <- substr(speech.df[[i]] , 1, 8)
+  speech.df[[i]] <- strptime(speech.df[[i]], format = "%H:%M:%S")
+  speech.df[[i]] <- times(strftime(speech.df[[i]], format="%H:%M:%S"))
 }
 
 # rename columns data frame (shorter names)
 names(body.df)[1:7] <- c("start", "end", "bodyPosture", "handGesture", "postureObject", "gestureObject", "comments")
 names(head.df)[1:5] <- c("start", "end", "headEye", "facialExpress", "comments")
 names(items.df)[1:4] <- c("start", "end", "itemBetween", "comments")
+names(speech.df)[1:12] <- c("start", "end", "speaker", "item", "speech", "speechMetrics", "taskRelated", "object", "direction", "location", "actionWord", "comments") 
 
 # uppercase values data frame (fix values in lowercase)
-library(tidyverse)
+# library(tidyverse)
 str_sub(body.df$bodyPosture, 1, 1) <- str_sub(body.df$bodyPosture, 1, 1) %>% str_to_upper()
 str_sub(body.df$handGesture, 1, 1) <- str_sub(body.df$handGesture, 1, 1) %>% str_to_upper()
+# [TO DO IT LATER] need to fix conversation values (make data more homogeneous) for speech.df 
 
 
 ### GET duration of session and add that to column in modes.df
