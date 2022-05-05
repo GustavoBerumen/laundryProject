@@ -13,6 +13,7 @@ library(chron)
 library(ggplot2)
 library(ggpubr)
 library(tidyverse)
+library(tidyr)
 
 # ================ [1.0] load files ================ 
 
@@ -151,20 +152,16 @@ for (i in 1:2){
   speech.df[[i]] <- times(strftime(speech.df[[i]], format="%H:%M:%S"))
 }
 
-# fix speech time
-speech.dummy[[i]][p] <- as.POSIXct(speech.dummy[[i]][p], format = "%Y-%m-%d %H:%M", tz = "GMT")
-speech.dummy[[i]][p] <- times(strftime(speech.dummy[[i]][p], format="%H:%M:%S", tz = "GMT"))
-speech.dummy[[i]][p] <- gsub(" ", "", paste("00:", as.character(speech.dummy[[i]][p])))
-speech.dummy[[i]] <- substr(speech.dummy[[i]][p] , 1, 8)
-speech.dummy[[i]] <- strptime(speech.dummy[[i]], format = "%H:%M:%S")
-speech.dummy[[i]] <- times(strftime(speech.dummy[[i]], format="%H:%M:%S"))
-
-
 # rename columns data frame (shorter names)
 names(body.df)[1:7] <- c("start", "end", "bodyPosture", "handGesture", "postureObject", "gestureObject", "comments")
 names(head.df)[1:5] <- c("start", "end", "headEye", "facialExpress", "comments")
 names(items.df)[1:4] <- c("start", "end", "itemBetween", "comments")
 names(speech.df)[1:12] <- c("start", "end", "speaker", "item", "speech", "speechMetrics", "taskRelated", "object", "direction", "location", "actionWord", "comments") 
+
+
+# add time to NA 'start' and 'end' column cells in speech.df
+speech.df <- speech.df %>% 
+  fill(c(start, end), .direction = "down")
 
 # uppercase values data frame (fix values in lowercase)
 # library(tidyverse)
