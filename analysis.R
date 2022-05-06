@@ -1,5 +1,6 @@
 # load files and data frames
-# source("./load-files.R")
+
+# source("./load-files.R") # un-comment to load files OR comment once files are loaded 
 ## Duration sessions----------------------------------------------------------------
 
 # BARPLOT - Duration session
@@ -16,7 +17,7 @@ ggplot(data = modes.df, aes(x = factor(mode), y = durSeconds/60), fill = p) +
   scale_fill_brewer(palette="BuPu") +
   theme(axis.text.x=element_text(angle = 50, hjust=1)) 
 
-## Entries per participant ----------------------------------------------------------------
+## Entries per participant (session) ----------------------------------------------------------------
 
 ### BODY - descriptive statistics all participants
 
@@ -48,6 +49,22 @@ pivotH <- head.df %>%
 ggplot(data = pivotH, aes(x=mode, y=mean)) +
   geom_bar(stat="identity") + 
   ggtitle("Head Eye Face - Entries per participant") +
+  xlab("Mode") + ylab("Mean")
+
+### SPEECH - descriptive statistics all participants [analysis 2022]
+
+# number of entries per participant
+pivotB <- speech.df %>%
+  dplyr::group_by(p, mode) %>%        # grouping variable
+  dplyr::summarise(total = length(p)) %>%
+  dplyr::group_by(mode) %>%    
+  dplyr::summarise(mean = round(mean(total))) %>%
+  dplyr::mutate(condition = "body")
+
+# BARPLOT - Basic 
+ggplot(data = pivotB, aes(x=mode, y=mean)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Speech - Entries per participant") +
   xlab("Mode") + ylab("Mean")
 
 
@@ -210,6 +227,83 @@ pivotH <- head.df %>%
 ggplot(data = pivotH, aes(x = factor(mode), y = mean, fill = facialExpress)) +    # print bar chart
   geom_bar(stat = 'identity', position = 'dodge')  +
   ggtitle("Facial Expressions (HEF) - Frequency Items") +
+  xlab("Mode") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+### SPEECH - frequency values per column [analysis 2022]
+
+# frequency table - SPEECH METRICS
+pivotB <- speech.df %>%
+  group_by(p, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(speechMetrics) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1))
+
+# frequency figure
+ggplot(data = pivotB, aes(x = factor(speechMetrics), y = mean, fill = speechMetrics)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+
+# frequency table - TASK RELATED
+pivotB <- speech.df %>%
+  group_by(p, taskRelated) %>%
+  summarise(total = length(taskRelated)) %>%
+  na.omit(taskRelated) %>%
+  group_by(taskRelated) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1))
+
+# frequency figure
+ggplot(data = pivotB, aes(x = factor(taskRelated), y = mean, fill = taskRelated)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Task Related (SPEECH) - Frequency Items") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+
+# frequency table - BODY POSTURE and MODE
+pivotB <- body.df %>%
+  group_by(p, mode, bodyPosture) %>%
+  summarise(total = length(bodyPosture)) %>%
+  na.omit(bodyPosture) %>%
+  group_by(mode, bodyPosture) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(pMode = case_when(mode == 1 ~ 16,
+                           mode > 1 ~ 13)) %>% # Fix the number of participants per mode 
+  mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+ggplot(data = pivotB, aes(x = factor(mode), y = mean, fill = bodyPosture)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge')  +
+  ggtitle("Body Posture (BPH) - Frequency Items") +
+  xlab("Mode") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+
+# frequency table - HAND GESTURE & MODE
+pivotB <- body.df %>%
+  group_by(p, mode, handGesture) %>%
+  summarise(total = length(handGesture)) %>%
+  na.omit(handGesture) %>%
+  group_by(mode, handGesture) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(pMode = case_when(mode == 1 ~ 16,
+                           mode > 1 ~ 13)) %>% # Fix the number of participants per mode 
+  mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+ggplot(data = pivotB, aes(x = factor(mode), y = mean, fill = handGesture)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge')  +
+  ggtitle("Hand Gesture (BPH) - Frequency Items") +
   xlab("Mode") + ylab("Mean") +
   theme(axis.text.x=element_text(angle = 50, hjust=1)) +
   scale_fill_discrete(name = "Items")
