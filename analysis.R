@@ -268,47 +268,43 @@ ggplot(data = pivotB, aes(x = factor(taskRelated), y = mean, fill = taskRelated)
   xlab("Items") + ylab("Mean") +
   theme(axis.text.x=element_text(angle = 50, hjust=1))
 
-
-# frequency table - BODY POSTURE and MODE
-pivotB <- body.df %>%
-  group_by(p, mode, bodyPosture) %>%
-  summarise(total = length(bodyPosture)) %>%
-  na.omit(bodyPosture) %>%
-  group_by(mode, bodyPosture) %>% 
+# frequency table - SPEECH METRICS POSTURE and MODE
+pivotB <- speech.df %>%
+  group_by(p, mode, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(mode, speechMetrics) %>% 
   summarise(freq = sum(total)) %>%
   mutate(pMode = case_when(mode == 1 ~ 16,
                            mode > 1 ~ 13)) %>% # Fix the number of participants per mode 
   mutate(mean = round(freq/pMode, 1))
 
 # frequency figure
-ggplot(data = pivotB, aes(x = factor(mode), y = mean, fill = bodyPosture)) +    # print bar chart
+ggplot(data = pivotB, aes(x = factor(mode), y = mean, fill = speechMetrics)) +    # print bar chart
   geom_bar(stat = 'identity', position = 'dodge')  +
-  ggtitle("Body Posture (BPH) - Frequency Items") +
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items") +
   xlab("Mode") + ylab("Mean") +
   theme(axis.text.x=element_text(angle = 50, hjust=1)) +
   scale_fill_discrete(name = "Items")
 
 
-# frequency table - HAND GESTURE & MODE
-pivotB <- body.df %>%
-  group_by(p, mode, handGesture) %>%
-  summarise(total = length(handGesture)) %>%
-  na.omit(handGesture) %>%
-  group_by(mode, handGesture) %>% 
-  summarise(freq = sum(total)) %>%
-  mutate(pMode = case_when(mode == 1 ~ 16,
-                           mode > 1 ~ 13)) %>% # Fix the number of participants per mode 
-  mutate(mean = round(freq/pMode, 1))
+# frequency table - SPEECH METRICS & TASK RELATED
+pivotB <- speech.df %>%
+  group_by(p, taskRelated, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(taskRelated, speechMetrics) %>% 
+  summarise(freq = sum(total))
 
 # frequency figure
-ggplot(data = pivotB, aes(x = factor(mode), y = mean, fill = handGesture)) +    # print bar chart
+ggplot(data = pivotB, aes(x = factor(taskRelated), y = freq, fill = speechMetrics)) +    # print bar chart
   geom_bar(stat = 'identity', position = 'dodge')  +
-  ggtitle("Hand Gesture (BPH) - Frequency Items") +
-  xlab("Mode") + ylab("Mean") +
+  ggtitle("Task Related & Speech Metrics (SPEECH) - Frequency Items") +
+  xlab("Task Related") + ylab("Frequency") +
   theme(axis.text.x=element_text(angle = 50, hjust=1)) +
   scale_fill_discrete(name = "Items")
 
-## Entries between Items x BODY ----------------------------------------------------------------
+## Entries between Items [clothes] x BODY ----------------------------------------------------------------
 
 ### identify entries for each of the items
 
@@ -333,7 +329,7 @@ ggplot(data = pivotIB, aes(x = factor(item), y = mean, fill = mean)) +    # prin
   theme(axis.text.x=element_text(angle = 50, hjust=1))
  
 
-### frequency table -ITEMS x BODY x MODE
+### frequency table - ITEMS x BODY x MODE
 pivotIB <- body.df %>%
   group_by(p, mode, item) %>%
   summarise(total = length(item)) %>%
@@ -424,7 +420,7 @@ ggarrange(m1, m2, m3,
           labels = c("1", "2", "3"),
           ncol = 1, nrow = 3)
 
-## Entries between Items x HEAD ----------------------------------------------------------------
+## Entries between Items [clothes] x HEAD ----------------------------------------------------------------
 
 ### identify entries for each of the items
 
@@ -529,6 +525,142 @@ m3 <- ggplot(data = pivotIH, aes(x = factor(item), y = mean, fill = mean)) +    
   geom_bar(stat = 'identity', position = 'dodge') +
   theme(legend.position = "none")  + 
   ggtitle("Head Eye Movements - Entries per Item - Mode 3") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+# put plots together 
+ggarrange(m1, m2, m3, 
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+
+## Entries between Items [clothes] x SPEECH ----------------------------------------------------------------
+### identify entries for each of the items
+
+# frequency of items [clothes] (all participants)
+
+### frequency table - ITEMS x SPEECH [ALL ITEMS]
+pivotIS <- speech.df %>%
+  group_by(p, item) %>%
+  summarise(total = length(item)) %>%
+  na.omit(item) %>%
+  group_by(item) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1)) %>%
+  arrange(item) %>%
+  subset(item != "2,3")# remove item 2,3 [only appears for one participant]
+
+# frequency figure
+ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = mean)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("SPEECH - Entries per Item [All ITEMS]") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+### frequency table - ITEMS x SPEECH [ONLY NUMBERS]
+pivotIS <- speech.df %>%
+  group_by(p, item) %>%
+  summarise(total = length(item)) %>%
+  na.omit(item) %>%
+  group_by(item) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1), item = as.numeric(item)) %>%
+  arrange(item) %>%
+  subset(item < 13)# remove non numeric items
+
+# frequency figure
+ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = mean)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("SPEECH - Entries per Item [Only NUMERIC]") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+### frequency table - ITEMS x BODY x MODE
+pivotIS <- speech.df %>%
+  group_by(p, mode, item) %>%
+  summarise(total = length(item)) %>%
+  na.omit(item) %>%
+  group_by(mode, item) %>% 
+  mutate(item = as.numeric(item)) %>%
+  subset(item < 13) %>% # remove non numeric items
+  summarise(freq = sum(total)) %>%
+  mutate(pMode = case_when(mode == 1 ~ 16,
+                           mode > 1 ~ 13)) %>% # Fix the number of participants per mode 
+  mutate(mean = round(freq/pMode, 1), item = as.numeric(item)) %>%
+  arrange(item)  %>%
+  mutate(item = as.character(item))
+
+# frequency figure
+ggplot(data = pivotIS, aes(x = factor(mode), y = mean, fill = item)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge')  +
+  ggtitle("SPEECH - Frequency Items") +
+  xlab("Mode") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+### CONTINUE
+
+### make a plot for each one of the modes 
+
+### frequency table - ITEMS x BODY POSTURE
+pivotIS <- speech.df %>%
+  filter(mode == 1) %>% 
+  group_by(p, item) %>%
+  summarise(total = length(item)) %>%
+  na.omit(item) %>%
+  group_by(item) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1), item = as.numeric(item)) %>%
+  subset(item < 13) %>% # remove non numeric items
+  arrange(item)
+
+# frequency figure
+m1 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = mean)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("SPEECH - Mean entries per Item - Mode 1") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+
+### frequency table - ITEMS x BODY POSTURE
+pivotIS <- speech.df %>%
+  filter(mode == 2) %>% 
+  group_by(p, item) %>%
+  summarise(total = length(item)) %>%
+  na.omit(item) %>%
+  group_by(item) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1), item = as.numeric(item)) %>%
+  subset(item < 13) %>% # remove non numeric items
+  arrange(item)
+
+# frequency figure
+m2 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = mean)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("SPEECH - Mean entries per Item - Mode 2") +
+  xlab("Items") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+
+### frequency table - ITEMS x BODY POSTURE
+pivotIS <- speech.df %>%
+  filter(mode == 3) %>% 
+  group_by(p, item) %>%
+  summarise(total = length(item)) %>%
+  na.omit(item) %>%
+  group_by(item) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants,1), item = as.numeric(item)) %>%
+  subset(item < 13) %>% # remove non numeric items
+  arrange(item)
+
+# frequency figure
+m3 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = mean)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("SPEECH - Mean entries per Item - Mode 2") +
   xlab("Items") + ylab("Mean") +
   theme(axis.text.x=element_text(angle = 50, hjust=1))
 
@@ -722,7 +854,102 @@ ggarrange(m1, m2, m3,
           labels = c("1", "2", "3"),
           ncol = 1, nrow = 3)
 
-## Entries between Items x OBJECT x BODY x MODE [Specific items 5 and 9 for Mode 2] ----------------------------------------------------------------
+## Entries between Items x OBJECT x BODY x MODE [Specific items 5 and 9 for Mode 2]
+
+## Entries between Items x OBJECT x SPEECH ----------------------------------------------------------------
+
+### SPEECH
+
+### frequency table - ITEMS x BODY POSTURE x OBJECT
+pivotIS <- speech.df %>%
+  filter(item %in% c(1, 5, 9)) %>%
+  group_by(p, item, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(item, speechMetrics) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(mean = round(freq/participants, 1))
+
+# frequency figure
+ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object") +
+  xlab("Item (Object)") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+### MODES
+
+### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
+pivotIS <- speech.df %>%
+  filter(item %in% c(1, 5, 9) & mode == 1) %>%
+  group_by(p, item, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(item, speechMetrics) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(pMode = 16) %>% # Fix the number of participants per mode 
+  mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+m1 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object - MODE 1") +
+  xlab("Item (Object)") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+
+### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
+pivotIS <- speech.df %>%
+  filter(item %in% c(1, 5, 9) & mode == 2) %>%
+  group_by(p, item, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(item, speechMetrics) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(pMode = 16) %>% # Fix the number of participants per mode 
+  mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+m2 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object - MODE 2") +
+  xlab("Item (Object)") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
+pivotIS <- speech.df %>%
+  filter(item %in% c(1, 5, 9) & mode == 3) %>%
+  group_by(p, item, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(item, speechMetrics) %>% 
+  summarise(freq = sum(total)) %>%
+  mutate(pMode = 16) %>% # Fix the number of participants per mode 
+  mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+m3 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object - MODE 3") +
+  xlab("Item (Object)") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+
+# put plots together 
+ggarrange(m1, m2, m3, 
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+
+### CONTINUE HERE
+
+----------------------------------------------------------------
 
 ### BODY POSTURE [MODE 2]
 
