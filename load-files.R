@@ -6,6 +6,16 @@
 # install.packages("ggplot2")
 # install.packages("ggpubr")
 
+### packages necessary for wordcloud
+
+#install.packages("wordcloud")
+#install.packages("RColorBrewer")
+#install.packages("wordcloud2")
+#install.packages("tm")
+#install.packages("stopwords")
+#install.packages("tidytext")
+# install.packages("wesanderson")
+
 library(readxl)
 library(magrittr) 
 library(dplyr)
@@ -14,6 +24,16 @@ library(ggplot2)
 library(ggpubr)
 library(tidyverse)
 library(tidyr)
+
+### libraries for wordcloud
+
+library(wordcloud)
+library(RColorBrewer)
+library(wordcloud2)
+library(tm)
+library(stopwords)
+library(tidytext)
+library(wesanderson)
 
 # ================ [1.0] load files ================ 
 
@@ -163,12 +183,12 @@ names(speech.df)[1:12] <- c("start", "end", "speaker", "item", "speech", "speech
 speech.df <- speech.df %>% 
   fill(c(start, end), .direction = "down")
 
-# uppercase values data frame (fix values in lowercase)
-# library(tidyverse)
+# uppercase values data frame (fix values in lowercase for body.df)
 str_sub(body.df$bodyPosture, 1, 1) <- str_sub(body.df$bodyPosture, 1, 1) %>% str_to_upper()
 str_sub(body.df$handGesture, 1, 1) <- str_sub(body.df$handGesture, 1, 1) %>% str_to_upper()
-# [TO DO IT LATER] need to fix conversation values (make data more homogeneous) for speech.df 
 
+# lowercase speech column in speech.df (conversation)
+str_sub(speech.df$speech, 1) <- str_sub(speech.df$speech, 1) %>% str_to_lower()
 
 ### GET duration of session and add that to column in modes.df
 

@@ -1,5 +1,4 @@
 # load files and data frames
-
 # source("./load-files.R") # un-comment to load files OR comment once files are loaded 
 ## Duration sessions----------------------------------------------------------------
 
@@ -16,6 +15,7 @@ ggplot(data = modes.df, aes(x = factor(mode), y = durSeconds/60), fill = p) +
   xlab("Mode") + ylab("Time (minutes)") +
   scale_fill_brewer(palette="BuPu") +
   theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+
 
 ## Entries per participant (session) ----------------------------------------------------------------
 
@@ -893,6 +893,7 @@ pivotIS <- speech.df %>%
 
 # frequency figure
 m1 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  lims(y = c(0, 10)) +
   geom_bar(stat = 'identity', position = 'dodge') +
   #theme(legend.position = "none")  + 
   ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object - MODE 1") +
@@ -914,6 +915,7 @@ pivotIS <- speech.df %>%
 
 # frequency figure
 m2 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  lims(y = c(0, 10)) +
   geom_bar(stat = 'identity', position = 'dodge') +
   #theme(legend.position = "none")  + 
   ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object - MODE 2") +
@@ -934,143 +936,132 @@ pivotIS <- speech.df %>%
 
 # frequency figure
 m3 <- ggplot(data = pivotIS, aes(x = factor(item), y = mean, fill = speechMetrics)) +    # print bar chart
+  lims(y = c(0, 10)) +
   geom_bar(stat = 'identity', position = 'dodge') +
   #theme(legend.position = "none")  + 
   ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object - MODE 3") +
   xlab("Item (Object)") + ylab("Mean") +
   theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  
   scale_fill_discrete(name = "Items")
-
 
 # put plots together 
 ggarrange(m1, m2, m3, 
           labels = c("1", "2", "3"),
           ncol = 1, nrow = 3)
 
-### CONTINUE HERE
-
-----------------------------------------------------------------
-
-### BODY POSTURE [MODE 2]
-
-pivotIB <- body.df %>%
-  filter(item %in% c(5, 9) & mode == 2 & bodyPosture != "Other body movement") %>%
-  group_by(p, item, bodyPosture) %>%
-  summarise(total = length(bodyPosture)) %>%
-  na.omit(bodyPosture) %>%
-  group_by(item, bodyPosture) %>% 
-  summarise(freq = sum(total)) %>%
-  mutate(pMode = 13) %>% # Fix the number of participants per mode 
-  mutate(mean = round(freq/pMode, 1))
-
-# frequency figure
-ggplot(data = pivotIB, aes(x = factor(item), y = mean, fill = bodyPosture)) +    # print bar chart
-  geom_bar(stat = 'identity', position = 'dodge') +
-  #theme(legend.position = "none")  + 
-  ggtitle("Body Posture (BPH) - Frequency Items x Object -  MODE 2") +
-  xlab("Item(Object)") + ylab("Mean") +
-  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
-  scale_fill_discrete(name = "Items")
-
-
-### BODY POSTURE [OBJECT 5]
-
-### MODE EFFECT
+### MOST COMMON STATEMENTS IN ITEMS 9 BY DIFFERENT MODES 
 
 ### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
-pivotIB <- body.df %>%
-  # filter(item %in% c(1, 5, 9) & mode == 1) %>%
-  filter(item == 5 & mode == 1) %>%
-  group_by(p, item, bodyPosture) %>%
-  summarise(total = length(bodyPosture)) %>%
-  na.omit(bodyPosture) %>%
-  group_by(item, bodyPosture) %>% 
+pivotIS <- speech.df %>%
+  filter(item == 9 & speechMetrics == "Statement" & mode == 1) %>%
+  group_by(p, item, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(item, speechMetrics) %>% 
   summarise(freq = sum(total)) %>%
   mutate(pMode = 16) %>% # Fix the number of participants per mode 
   mutate(mean = round(freq/pMode, 1))
 
-# frequency figure
-m1 <- ggplot(data = pivotIB, aes(x = factor(item), y = mean, fill = bodyPosture)) +    # print bar chart
-  lims(y = c(0, 1.6)) +
-  geom_bar(stat = 'identity', position = 'dodge') +
-  #theme(legend.position = "none")  + 
-  ggtitle("Body Posture (BPH) - Frequency Items x Object - MODE 1") +
-  xlab("Item (Object)") + ylab("Mean") +
-  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
-  scale_fill_discrete(name = "Items")
+## Word analysis in SPEECH data frame ----------------------------------------------------------------
+
+### frequency words - ALL 
+
+# create a vector containing only the text
+text <- speech.df$speech
+
+# create a corpus  
+docs <- Corpus(VectorSource(text))
+# clean text
+docs <- docs %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace)
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+
+# create a document-term-matrix
+dtm <- TermDocumentMatrix(docs) 
+matrix <- as.matrix(dtm) 
+words <- sort(rowSums(matrix),decreasing=TRUE) 
+df <- data.frame(word = names(words),freq=words)
+
+# generate the wordcloud
+set.seed(1234) # set for reproducibility 
+wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
+          rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"), scale=c(2.5, 0.25))
+
+### frequency words x MODE
+
+# function to return a dataframe of word frequency
+wordFreq <- function(pivotText) {
+  # create a corpus AND clean text 
+  docs <- Corpus(VectorSource(pivotText))
+  docs <- docs %>%
+    tm_map(removeNumbers) %>%
+    tm_map(removePunctuation) %>%
+    tm_map(stripWhitespace)
+  docs <- tm_map(docs, content_transformer(tolower))
+  docs <- tm_map(docs, removeWords, stopwords("english"))
+  
+  # create a document-term-matrix
+  dtm <- TermDocumentMatrix(docs) 
+  matrix <- as.matrix(dtm) 
+  words <- sort(rowSums(matrix),decreasing=TRUE) 
+  dfText <- data.frame(word = names(words),freq=words)
+  
+  return(dfText)
+}
+
+# frequency vector - MODE 1
+pivotText <- speech.df %>%
+  filter(mode == 1) %>%
+  select(speech)
+df1 <- wordFreq(pivotText)
+
+# frequency vector - MODE 2
+pivotText <- speech.df %>%
+  filter(mode == 2) %>%
+  select(speech)
+df2 <- wordFreq(pivotText)
+
+# frequency vector - MODE 3
+pivotText <- speech.df %>%
+  filter(mode == 3) %>%
+  select(speech)
+df3 <- wordFreq(pivotText)
+
+# generate the wordCloud
+set.seed(1) # set for reproducibility
+df <- df3 
+wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
+          rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"),
+          scale=c(2.5, 0.5))
+
+# maybe plot three plots together
+
+### CONTINUE HERE
+
+# find words that associate
+findAssocs(dtm, terms = "freedom", corlimit = 0.3)
+
+# top of frequency table 
+head(d, 10)
+
+# plot of the frequency for the top10
+barplot(freqTable[1:10,]$freq, las = 2, 
+        names.arg = freqTable[1:10,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
 
 
-### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
-pivotIB <- body.df %>%
-  # filter(item %in% c(5, 9) & mode == 2) %>%
-  filter(item == 5 & mode == 2 & bodyPosture != "Other body movement") %>%
-  group_by(p, item, bodyPosture) %>%
-  summarise(total = length(bodyPosture)) %>%
-  na.omit(bodyPosture) %>%
-  group_by(item, bodyPosture) %>% 
-  summarise(freq = sum(total)) %>%
-  mutate(pMode = 13) %>% # Fix the number of participants per mode 
-  mutate(mean = round(freq/pMode, 1))
-
-# frequency figure
-m2 <- ggplot(data = pivotIB, aes(x = factor(item), y = mean, fill = bodyPosture)) +    # print bar chart
-  lims(y = c(0, 1.6)) +
-  geom_bar(stat = 'identity', position = 'dodge') +
-  #theme(legend.position = "none")  + 
-  ggtitle("Body Posture (BPH) - Frequency Items x Object -  MODE 2") +
-  xlab("Item (Object)") + ylab("Mean") +
-  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
-  scale_fill_discrete(name = "Items")
 
 
-### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
-pivotIB <- body.df %>%
-  #filter(item %in% c(1, 5, 9) & mode == 3) %>%
-  filter(item == 5 & mode == 3, bodyPosture != "Other body movement") %>%
-  group_by(p, item, bodyPosture) %>%
-  summarise(total = length(bodyPosture)) %>%
-  na.omit(bodyPosture) %>%
-  group_by(item, bodyPosture) %>% 
-  summarise(freq = sum(total)) %>%
-  mutate(pMode = 13) %>% # Fix the number of participants per mode 
-  mutate(mean = round(freq/pMode, 1))
+# WORD FREQUENCY X SPEECH METRIC
 
-# frequency figure
-m3 <- ggplot(data = pivotIB, aes(x = factor(item), y = mean, fill = bodyPosture)) +    # print bar chart
-  lims(y = c(0, 1.6)) +
-  geom_bar(stat = 'identity', position = 'dodge') +
-  #theme(legend.position = "none")  + 
-  ggtitle("Body Posture (BPH) - Frequency Items x Object -  MODE 3") +
-  xlab("Item (Object)") + ylab("Mean") +
-  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
-  scale_fill_discrete(name = "Items")
+# WORD FREQUENCY X ITEM
 
+# WORD FREQUENCY X ITEM X MODE 
 
-# put plots together 
-ggarrange(m1, m2, m3, 
-          labels = c("1", "2", "3"),
-          ncol = 1, nrow = 3)
+# WORD FREQUENCY X ITEM X MODE X SPEECH METRIC 
 
-### ANOVA
-### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
-pivotIB <- body.df %>%
-  #filter(bodyPosture == "Move towards robot") %>%
-  filter(bodyPosture == "Move towards robot", item == 5) %>%
-  group_by(p, mode, bodyPosture) %>%
-  summarise(total = length(bodyPosture))
-
-ggplot(pivotIB) +
-  aes(x = mode, y = total, color = mode) +
-  geom_jitter() + 
-  theme(legend.position = "none") +
-  ggtitle("Body Posture (BPH) - Move towards robot (total) x MODE x Item 5") +
-  scale_x_discrete(name ="Mode", 
-                   limits=c("1","2","3")) +
-  ylab("Total (Move towards robot)") +
-  geom_text_repel(aes(mode, total, label = p), size = 2)
-
-
-### P119
-
-pivotIB <- body.df %>%
-  filter(item %in% c(5) & mode == 2 & bodyPosture == "Move towards robot" & p == 119) 
