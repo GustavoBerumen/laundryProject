@@ -967,11 +967,13 @@ pivotIS <- speech.df %>%
 
 ### frequency words - ALL 
 
+### CONTINUE HERE, SOLVE ISSUE 
+
 # create a vector containing only the text
-text <- speech.df$speech
+pvText <- speech.df$speech
 
 # create a corpus  
-docs <- Corpus(VectorSource(text))
+docs <- Corpus(VectorSource(pvText))
 # clean text
 docs <- docs %>%
   tm_map(removeNumbers) %>%
@@ -986,7 +988,7 @@ matrix <- as.matrix(dtm)
 words <- sort(rowSums(matrix),decreasing=TRUE) 
 df <- data.frame(word = names(words),freq=words)
 
-# generate the wordcloud
+# generate the wordCloud
 set.seed(1234) # set for reproducibility 
 wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
           rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"), scale=c(2.5, 0.25))
@@ -1010,51 +1012,150 @@ wordFreq <- function(pivotText) {
   words <- sort(rowSums(matrix),decreasing=TRUE) 
   dfText <- data.frame(word = names(words),freq=words)
   
-  return(dfText)
+  wordElms <- list(dtm, dfText)
+  return(wordElms)
+  #return(dfText)
 }
 
-# frequency vector - MODE 1
-pivotText <- speech.df %>%
-  filter(mode == 1) %>%
-  select(speech)
-df1 <- wordFreq(pivotText)
+## frequency df - MODE 1
 
-# frequency vector - MODE 2
-pivotText <- speech.df %>%
-  filter(mode == 2) %>%
-  select(speech)
-df2 <- wordFreq(pivotText)
+# get vector to feed wordCloud function
+pv1 <- speech.df %>%
+  filter(mode == 1)
+pvText1 <- pv1$speech
+# call wordCloud function
+wordCl1 <- wordFreq(pvText1) # return elements from wordCloud function
+# get frequency table term-document matrix 
+df1 <- wordCl1[[2]] # frequency table
+dtm1 <- wordCl1[[1]] # matrix
 
-# frequency vector - MODE 3
-pivotText <- speech.df %>%
-  filter(mode == 3) %>%
-  select(speech)
-df3 <- wordFreq(pivotText)
+# find words associated to a specific word 
+findAssocs(dtm1, terms = "please", corlimit = 0.1)
 
-# generate the wordCloud
+
+## frequency df - MODE 2
+
+# get vector to feed wordCloud function
+pv2 <- speech.df %>%
+  filter(mode == 2)
+pvText2 <- pv2$speech
+# call wordCloud function
+wordCl2 <- wordFreq(pvText2) # return elements from wordCloud function
+# get frequency table term-document matrix 
+df2 <- wordCl2[[2]] # frequency table
+dtm2 <- wordCl2[[1]] # matrix
+
+# find words associated to a specific word 
+findAssocs(dtm2, terms = "please", corlimit = 0.1)
+
+## frequency df - MODE 3
+pv3 <- speech.df %>%
+  filter(mode == 3)
+pvText3 <- pv3$speech
+# call wordCloud function
+wordCl3 <- wordFreq(pvText3) # return elements from wordCloud function
+# get frequency table term-document matrix 
+df3 <- wordCl3[[2]] # frequency table
+dtm3 <- wordCl3[[1]] # matrix
+
+# find words associated to a specific word 
+findAssocs(dtm3, terms = "please", corlimit = 0.01)
+
+### plot wordClouds
+
+# MODE 1
+set.seed(1) # set for reproducibility
+df <- df1 
+wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
+          rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"),
+          scale=c(2.5, 0.5))
+
+# MODE 2
+set.seed(1) # set for reproducibility
+df <- df2 
+wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
+          rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"),
+          scale=c(2.5, 0.5))
+
+# MODE 3
 set.seed(1) # set for reproducibility
 df <- df3 
 wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
           rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"),
           scale=c(2.5, 0.5))
 
-# maybe plot three plots together
+## descriptive analysis frequency df
 
-### CONTINUE HERE
+# MODE - 1
+head(df1, 10) # most frequent words 
+sum(df1$freq) # number of words
+avW1 <- ceiling(sum(df1$freq)/16) # average number of words per session
 
-# find words that associate
-findAssocs(dtm, terms = "freedom", corlimit = 0.3)
+# MODE - 2
+head(df2, 10)
+sum(df2$freq)
+avW2 <- ceiling(sum(df2$freq)/13)
 
-# top of frequency table 
-head(d, 10)
+# MODE - 3
+head(df3, 10)
+sum(df3$freq)
+avW3 <- ceiling(sum(df3$freq)/13)
 
-# plot of the frequency for the top10
-barplot(freqTable[1:10,]$freq, las = 2, 
-        names.arg = freqTable[1:10,]$word,
-        col ="lightblue", main ="Most frequent words",
-        ylab = "Word frequencies")
+### Barplot average number of words per mode and most common words per mode
+
+# create data frame with average number of words for each mode per session
+avgWords <- data.frame (mode = c(1:3),
+                        avg = c(avW1, avW2, avW3))
+
+# BARPLOT - Basic 
+ggplot(data = avgWords, aes(x=mode, y=avg, fill=mode)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Number of words (SPEECH) - Per session") +
+  xlab("Mode") + ylab("Mean") +
+  theme(legend.position="none")
+
+# BARPLOT - MOST COMMON WORDS (TOP 10) - MODE 1
+m1 <- ggplot(data = df1[1:10, ], aes(x=reorder(word, -freq), y=freq, fill=freq)) +
+  lims(y = c(0, 450)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Most frequent words all sessions (SPEECH) - MODE 1") +
+  xlab("Mode") + ylab("Frequency") +
+  theme(legend.position="none") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+
+# BARPLOT - MOST COMMON WORDS (TOP 10) - MODE 2
+m2 <- ggplot(data = df2[1:10, ], aes(x=reorder(word, -freq), y=freq, fill=freq)) +
+  lims(y = c(0, 450)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Most frequent words all sessions (SPEECH) - MODE 2") +
+  xlab("Mode") + ylab("Frequency") +
+  theme(legend.position="none") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+
+# BARPLOT - MOST COMMON WORDS (TOP 10) - MODE 3
+m3 <- ggplot(data = df3[1:10, ], aes(x=reorder(word, -freq), y=freq, fill=freq)) +
+  lims(y = c(0, 450)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Most frequent words all sessions (SPEECH) - MODE 3") +
+  xlab("Mode") + ylab("Frequency") +
+  theme(legend.position="none") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+
+# put plots together 
+ggarrange(m1, m2, m3,
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+  
+
+### Word association find words associate to a specific word
+
+pvText <- speech.df %>%
+  select(speech)
+
+findAssocs(dtm, terms = "please", corlimit = 0.1)
 
 
+a <- findAssocs(res$tdm, terms = "please", corlimit = 0.075)
 
 
 # WORD FREQUENCY X SPEECH METRIC
