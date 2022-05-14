@@ -5,7 +5,9 @@
 # install.packages("chron")
 # install.packages("ggplot2")
 # install.packages("ggpubr")
-
+# install.packages("grid")
+# install.packages("gridExtra")
+# install.packages("pdftools")
 ### packages necessary for wordcloud
 
 #install.packages("wordcloud")
@@ -24,6 +26,9 @@ library(ggplot2)
 library(ggpubr)
 library(tidyverse)
 library(tidyr)
+library(grid)
+library(gridExtra)
+library(pdftools)
 
 ### libraries for wordcloud
 
@@ -290,6 +295,78 @@ for (i in pId){
     }
   }
 }
+
+### functions
+
+# function to return a dataframe of word frequency
+wordFreq <- function(pivotText) {
+  # create a corpus AND clean text 
+  docs <- Corpus(VectorSource(pivotText))
+  docs <- docs %>%
+    tm_map(removeNumbers) %>%
+    tm_map(removePunctuation) %>%
+    tm_map(stripWhitespace)
+  docs <- tm_map(docs, content_transformer(tolower))
+  docs <- tm_map(docs, removeWords, stopwords("english"))
+  
+  # create a document-term-matrix
+  dtm <- TermDocumentMatrix(docs) 
+  matrix <- as.matrix(dtm) 
+  words <- sort(rowSums(matrix),decreasing=TRUE) 
+  dfText <- data.frame(word = names(words),freq=words)
+  
+  wordElms <- list(dtm, dfText)
+  return(wordElms)
+  #return(dfText)
+}
+
+## extracting data from pdf (survey and demographics)
+
+# questions to extract
+qVector <- c("2.1   Completing the sorting task was easy to do.", "2.2   The sorting task was interesting to do.", "4.1   During the task, I prefer that the trainee ‘robot’ tells me what it ",
+             "4.2   The trainee ‘robot’ understood what I explained to it.", "4.3   The trainee ‘robot’ should be more reactive", "4.4   The trainee ‘robot’ should be more proactive", 
+             "5.2   The display screen troubles me", "11     How often do you sort laundry\\? Please select the answer than", "12     Which of the following best describe your usual laundry sorting"
+               )
+
+
+# names of questions to be added in the data frame 
+qNames <- c("completing", "sorting", "robotTells", "robotUnderstood", "robotReactive", "robotProactive", "screenTroubles", "laundryFreq", "sortingPractice")
+
+# load the pdf 
+survey <- pdf_text("survey-icube.pdf") %>%
+  readr::read_lines() 
+
+# clean data and convert it to data frame
+surveyDF <- as.data.frame(survey)
+surveyDF <- surveyDF %>%
+  filter(surveyDF != "")
+
+# returns a data frame with the answers to the questions in a vector
+qLen <- length(qVector) # number of questions
+
+for(i in 1:qLen){
+  
+  # set question
+  q <- qVector[i]
+  
+  # get answers from specific question(s) [q]
+  qDF <- surveyDF %>%
+    filter(grepl(q, survey))
+  qDF <- data.frame(lapply(qDF, function(x) {gsub(q,"", x)})) # remove question from answer 
+  qDF <- data.frame(lapply(qDF, function(x) {gsub("^\\s+|\\s+$", "", x)})) # remove white spacing
+  
+  # create df or add data to df
+  if (i == 1){
+    survey.df <- qDF # create df 
+  } else {
+    survey.df <- cbind(survey.df, qDF)
+  }
+}
+
+# change names columns ansDF
+names(survey.df) <- qNames
+
+# add participant and mode to survey.df
 
 # set the directory back to the script source
 setwd("C:/Users/lpxjgb/OneDrive - The University of Nottingham/Desktop/___iVideos/analysis-interactions")
