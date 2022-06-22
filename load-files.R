@@ -183,7 +183,6 @@ names(head.df)[1:5] <- c("start", "end", "headEye", "facialExpress", "comments")
 names(items.df)[1:4] <- c("start", "end", "itemBetween", "comments")
 names(speech.df)[1:12] <- c("start", "end", "speaker", "item", "speech", "speechMetrics", "taskRelated", "object", "direction", "location", "actionWord", "comments") 
 
-
 # add time to NA 'start' and 'end' column cells in speech.df
 speech.df <- speech.df %>% 
   fill(c(start, end), .direction = "down")
@@ -191,6 +190,10 @@ speech.df <- speech.df %>%
 # uppercase values data frame (fix values in lowercase for body.df)
 str_sub(body.df$bodyPosture, 1, 1) <- str_sub(body.df$bodyPosture, 1, 1) %>% str_to_upper()
 str_sub(body.df$handGesture, 1, 1) <- str_sub(body.df$handGesture, 1, 1) %>% str_to_upper()
+
+# lowercase values data frame in modes.df (gender and robot name)
+str_sub(modes.df$gender, 1, 1) <- str_sub(modes.df$gender, 1, 1) %>% str_to_upper()
+str_sub(modes.df$nameRobot, 1, 1) <- str_sub(modes.df$nameRobot, 1, 1) %>% str_to_upper()
 
 # lowercase speech column in speech.df (conversation)
 str_sub(speech.df$speech, 1) <- str_sub(speech.df$speech, 1) %>% str_to_lower()
@@ -237,6 +240,8 @@ for (i in pId){
 durTest <- strptime(modes.df$duration, format='%H:%M:%S')
 modes.df$durSeconds <- durTest$hour * 3600 + durTest$min * 60 + durTest$sec
 
+# reorder columns modes.df
+modes.df <- modes.df[, c(1, 2, 7, 6, 3, 4, 5)]
 
 # identify and items to body.df entries
 
@@ -245,7 +250,7 @@ body.df$item <- NA
 # add empty item column to body.df 
 head.df$item <- NA
 
-# function to add identify and add item to body.df entries
+# add identify and add item to body.df entries
 for (i in pId){
   
   # filter p in dfs
@@ -296,50 +301,29 @@ for (i in pId){
   }
 }
 
-### functions
-
-# function to return a dataframe of word frequency
-wordFreq <- function(pivotText) {
-  # create a corpus AND clean text 
-  docs <- Corpus(VectorSource(pivotText))
-  docs <- docs %>%
-    tm_map(removeNumbers) %>%
-    tm_map(removePunctuation) %>%
-    tm_map(stripWhitespace)
-  docs <- tm_map(docs, content_transformer(tolower))
-  docs <- tm_map(docs, removeWords, stopwords("english"))
-  
-  # create a document-term-matrix
-  dtm <- TermDocumentMatrix(docs) 
-  matrix <- as.matrix(dtm) 
-  words <- sort(rowSums(matrix),decreasing=TRUE) 
-  dfText <- data.frame(word = names(words),freq=words)
-  
-  wordElms <- list(dtm, dfText)
-  return(wordElms)
-  #return(dfText)
-}
-
 ## extracting data from pdf (survey and demographics)
 
 # questions to extract
-qVector <- c("2.1   Completing the sorting task was easy to do.", "2.2   The sorting task was interesting to do.", "4.1   During the task, I prefer that the trainee ‘robot’ tells me what it ",
-             "4.2   The trainee ‘robot’ understood what I explained to it.", "4.3   The trainee ‘robot’ should be more reactive", "4.4   The trainee ‘robot’ should be more proactive", 
+qVector <- c("2.1   Completing the sorting task was easy to do.", "2.2   The sorting task was interesting to do.", "4.1   During the task, I prefer that the trainee robot tells me what it", 
+             "4.2   The trainee robot understood what I explained to it.", "4.3   The trainee robot should be more reactive", "4.4   The trainee robot should be more proactive", 
              "5.2   The display screen troubles me", "11     How often do you sort laundry\\? Please select the answer than", "12     Which of the following best describe your usual laundry sorting"
                )
-
 
 # names of questions to be added in the data frame 
 qNames <- c("completing", "sorting", "robotTells", "robotUnderstood", "robotReactive", "robotProactive", "screenTroubles", "laundryFreq", "sortingPractice")
 
 # load the pdf 
-survey <- pdf_text("survey-icube.pdf") %>%
-  readr::read_lines() 
+surveyRaw <- pdf_text("survey-icube.pdf") %>%
+  readr::read_lines()
+surveyRaw <- iconv(surveyRaw, "latin1", "ASCII", sub="") # removes the issues with appostrophes associated with questions 4.1-4.3
+
 
 # clean data and convert it to data frame
-surveyDF <- as.data.frame(survey)
-surveyDF <- surveyDF %>%
-  filter(surveyDF != "")
+surveyClean <- as.data.frame(surveyRaw)
+surveyClean <- surveyClean %>%
+  filter(surveyClean != "")
+
+
 
 # returns a data frame with the answers to the questions in a vector
 qLen <- length(qVector) # number of questions
@@ -350,8 +334,8 @@ for(i in 1:qLen){
   q <- qVector[i]
   
   # get answers from specific question(s) [q]
-  qDF <- surveyDF %>%
-    filter(grepl(q, survey))
+  qDF <- surveyClean %>%
+    filter(grepl(q, surveyRaw))
   qDF <- data.frame(lapply(qDF, function(x) {gsub(q,"", x)})) # remove question from answer 
   qDF <- data.frame(lapply(qDF, function(x) {gsub("^\\s+|\\s+$", "", x)})) # remove white spacing
   
@@ -366,7 +350,32 @@ for(i in 1:qLen){
 # change names columns ansDF
 names(survey.df) <- qNames
 
-# add participant and mode to survey.df
+# get unique values survey.df
+unqAns <- sort(unique(survey.df$robotReactive))
+
+# fixed answer values
+fixAns <- c(2, 6, 4, 3, 5, 1, 7)
+
+# get lenght of answers 
+lenAns <- length(unqAns)
+
+# get backUp dataframe
+surveyR.df <- survey.df
+
+# replace values in data frame
+for (i in 1:lenAns){
+  surveyR.df[surveyR.df == unqAns[i]] <-  fixAns[i]
+}
+
+# joint survery questions and basic demographic data
+surveyDem.df <- cbind(modes.df, surveyR.df)
+
+# character answers
+charAns <- c("1-totallyAgree", "2-mostlyAgree", "3-somewhatAgree", "4-neitherDisagreeAgree",
+             "5-somewhatDisagree", "6-mostlyDisagree", "7-totallyDisagree")
 
 # set the directory back to the script source
 setwd("C:/Users/lpxjgb/OneDrive - The University of Nottingham/Desktop/___iVideos/analysis-interactions")
+
+# load functions file
+source("./functions.R")

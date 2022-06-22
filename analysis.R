@@ -1,4 +1,5 @@
 # load files and data frames
+# rm(list = ls()) # to clear workspace
 # source("./load-files.R") # un-comment to load files OR comment once files are loaded 
 ## Duration sessions----------------------------------------------------------------
 
@@ -16,8 +17,6 @@ ggplot(data = modes.df, aes(x = p, y = durSeconds/60, width = 0.9, fill = as.cha
   labs(fill = "Mode") +
   theme(legend.position="bottom")
 
-
-
 # BARPLOT - MEAN DURATION session and MODE 
 ggplot(data = modes.df, aes(x = factor(mode), y = durSeconds/60, fill = as.character(mode))) +
   geom_bar(stat = 'identity', position = 'dodge')  +
@@ -27,7 +26,6 @@ ggplot(data = modes.df, aes(x = factor(mode), y = durSeconds/60, fill = as.chara
   theme(axis.text.x=element_text(angle = 50, hjust=1)) +
   labs(fill = "Mode") +
   theme(legend.position="bottom")
-
 
 ## Entries per participant (session) ----------------------------------------------------------------
 
@@ -1283,3 +1281,695 @@ ggarrange(m1, m2, m3,
           labels = c("1", "2", "3"),
           ncol = 1, nrow = 3)
 
+
+
+
+## Survey data ----------------------------------------------------------------
+
+# BARPLOT - Duration session PARTICIPANTS & NAME GIVEN TO THE ROBOT
+ggplot(data = surveyDem.df, aes(x = p, y = durSeconds/60, width = 0.9, fill = as.character(mode))) +
+  geom_bar(stat="identity", alpha=.75) + 
+  ggtitle("Durations Sessions & Name Given to Robot") +
+  lims(y = c(0, 20)) +
+  xlab("Participants") + ylab("Time (minutes)") +
+  labs(fill = "Mode") +
+  theme(legend.position="bottom") +
+  geom_text(aes(label = nameRobot), nudge_y = 0.5,  angle = 90, size = 2)
+
+
+### COMPLETING TASK Average
+
+# ALL MODES
+pivotSDA <- surveyDem.df %>%
+  dplyr::select(completing) %>%
+  dplyr::group_by(completing) %>%
+  dplyr::summarise(total = length(completing)) %>%
+  ungroup() %>% 
+  dplyr::mutate(mean = round((total/sum(total))*100, digits = 1))
+
+# completing conditions
+pivotSDA$completing <- as.numeric(pivotSDA$completing)
+pivotSDA <- complete(pivotSDA, completing = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replacing numeric for character answers
+pivotSDR <- replaceAnswer(pivotSDA, 1)
+
+# plot COMPLETING TASK All participants 
+ggplot(data = pivotSDR, aes(x = completing, y = mean, fill = completing, color = completing)) +    # print bar chart
+  lims(y = c(0, 43)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Completing the task was easy? - ALL PARTICIPANTS") +
+  xlab("Evaluation") + ylab("Mean") +
+  #theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+  # + coord_flip()
+
+
+# for each MODE 
+# get df with average for all three modes 
+for (i in 1:3){
+  # get df for each mode
+  pivotSD <- surveyDem.df %>%
+    dplyr::filter(mode == i) %>%
+    dplyr::select(completing) %>%
+    dplyr::group_by(completing) %>%
+    dplyr::summarise(total = length(completing)) %>%
+    ungroup() %>% 
+    dplyr::mutate(mean = round((total/sum(total))*100, digits = 1), mode = i)
+  
+  # joint df
+  if (i == 1){
+    pivotCom <- pivotSD
+  } else {
+    pivotCom <- rbind(pivotCom, pivotSD)
+  }
+}
+
+# complete pivotCom (add data to empty categories)
+pivotCom$completing <- as.numeric(pivotCom$completing)
+pivotCom <- complete(pivotCom, mode, completing = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replace numeric for characters answers in pivotCom
+for (i in 1:lenAns){
+  pivotCom$completing[pivotCom$completing == i] <-  charAns[i]
+} 
+
+# PLOT - COMPLETING TASK Average & MODE
+
+# frequency figure
+m1 <- pivotCom %>%
+  filter(mode == 1) %>%
+  ggplot(aes(x = completing, y = mean, fill = completing, color = completing)) +    # print bar chart
+  lims(y = c(0, 55)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Completing the task was easy? - MODE 1") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+  # + coord_flip()
+
+# frequency figure
+m2 <- pivotCom %>%
+  filter(mode == 2) %>%
+  ggplot(aes(x = completing, y = mean, fill = completing, color = completing)) +    # print bar chart
+  lims(y = c(0, 55)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Completing the task was easy? - MODE 2") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+  # + coord_flip()
+
+# frequency figure
+m3 <- pivotCom %>%
+  filter(mode == 3) %>%
+  ggplot(aes(x = completing, y = mean, fill = completing, color = completing)) +    # print bar chart
+  lims(y = c(0, 55)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Completing the task was easy? - MODE 3") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+  # + coord_flip()
+
+# put plots together 
+ggarrange(m1, m2, m3, 
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+
+
+### ROBOT UNDERSTOOD WHAT I EXPLAINED Average
+
+# ALL MODES
+pivotSDA <- surveyDem.df %>%
+  dplyr::select(robotUnderstood) %>%
+  dplyr::group_by(robotUnderstood) %>%
+  dplyr::summarise(total = length(robotUnderstood)) %>%
+  ungroup() %>% 
+  dplyr::mutate(mean = round((total/sum(total))*100, digits = 1))
+
+# completing conditions
+pivotSDA$robotUnderstood <- as.numeric(pivotSDA$robotUnderstood)
+pivotSDA <- complete(pivotSDA, robotUnderstood = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replacing numeric for character answers
+pivotSDR <- replaceAnswer(pivotSDA, 1)
+
+# plot COMPLETING TASK All participants 
+ggplot(data = pivotSDR, aes(x = robotUnderstood, y = mean, fill = robotUnderstood, color = robotUnderstood)) +    # print bar chart
+  lims(y = c(0, 43)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Understood - ALL PARTICIPANTS") +
+  xlab("Evaluation") + ylab("Mean") +
+  #theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# For each MODE 
+
+# get df with average for all three modes 
+for (i in 1:3){
+  # get df for each mode
+  pivotSD <- surveyDem.df %>%
+    dplyr::filter(mode == i) %>%
+    dplyr::select(robotUnderstood) %>%
+    dplyr::group_by(robotUnderstood) %>%
+    dplyr::summarise(total = length(robotUnderstood)) %>%
+    ungroup() %>% 
+    dplyr::mutate(mean = round((total/sum(total))*100, digits = 1), mode = i)
+  
+  # joint df
+  if (i == 1){
+    pivotCom <- pivotSD
+  } else {
+    pivotCom <- rbind(pivotCom, pivotSD)
+  }
+}
+
+# complete pivotCom (add data to empty categories)
+pivotCom$robotUnderstood <- as.numeric(pivotCom$robotUnderstood)
+pivotCom <- complete(pivotCom, mode, robotUnderstood = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replace numeric for characters answers in pivotCom
+for (i in 1:lenAns){
+  pivotCom$robotUnderstood[pivotCom$robotUnderstood == i] <-  charAns[i]
+} 
+
+# PLOT - Robot Understood TASK Average & MODE
+
+# frequency figure
+m1 <- pivotCom %>%
+  filter(mode == 1) %>%
+  ggplot(aes(x = robotUnderstood, y = mean, fill = robotUnderstood, color = robotUnderstood)) +    # print bar chart
+  lims(y = c(0, 55)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Understood - MODE 1") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# frequency figure
+m2 <- pivotCom %>%
+  filter(mode == 2) %>%
+  ggplot(aes(x = robotUnderstood, y = mean, fill = robotUnderstood, color = robotUnderstood)) +    # print bar chart
+  lims(y = c(0, 55)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Understood - MODE 2") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# frequency figure
+m3 <- pivotCom %>%
+  filter(mode == 3) %>%
+  ggplot(aes(x = robotUnderstood, y = mean, fill = robotUnderstood, color = robotUnderstood)) +    # print bar chart
+  lims(y = c(0, 55)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Understood - MODE 3") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+# + coord_flip()
+
+# put plots together 
+ggarrange(m1, m2, m3, 
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+
+
+### ROBOT REACTIVE Average
+
+# ALL MODES
+pivotSDA <- surveyDem.df %>%
+  dplyr::select(robotReactive) %>%
+  dplyr::group_by(robotReactive) %>%
+  dplyr::summarise(total = length(robotReactive)) %>%
+  ungroup() %>% 
+  dplyr::mutate(mean = round((total/sum(total))*100, digits = 1))
+
+# completing conditions
+pivotSDA$robotReactive <- as.numeric(pivotSDA$robotReactive)
+pivotSDA <- complete(pivotSDA, robotReactive = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replacing numeric for character answers
+pivotSDR <- replaceAnswer(pivotSDA, 1)
+
+# plot COMPLETING TASK All participants 
+ggplot(data = pivotSDR, aes(x = robotReactive, y = mean, fill = robotReactive, color = robotReactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Reactive - ALL PARTICIPANTS") +
+  xlab("Evaluation") + ylab("Mean") +
+  #theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# For each MODE 
+
+# get df with average for all three modes 
+for (i in 1:3){
+  # get df for each mode
+  pivotSD <- surveyDem.df %>%
+    dplyr::filter(mode == i) %>%
+    dplyr::select(robotReactive) %>%
+    dplyr::group_by(robotReactive) %>%
+    dplyr::summarise(total = length(robotReactive)) %>%
+    ungroup() %>% 
+    dplyr::mutate(mean = round((total/sum(total))*100, digits = 1), mode = i)
+  
+  # joint df
+  if (i == 1){
+    pivotCom <- pivotSD
+  } else {
+    pivotCom <- rbind(pivotCom, pivotSD)
+  }
+}
+
+# complete pivotCom (add data to empty categories)
+pivotCom$robotReactive <- as.numeric(pivotCom$robotReactive)
+pivotCom <- complete(pivotCom, mode, robotReactive = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replace numeric for characters answers in pivotCom
+for (i in 1:lenAns){
+  pivotCom$robotReactive[pivotCom$robotReactive == i] <-  charAns[i]
+} 
+
+# PLOT - Robot Understood TASK Average & MODE
+
+# frequency figure
+m1 <- pivotCom %>%
+  filter(mode == 1) %>%
+  ggplot(aes(x = robotReactive, y = mean, fill = robotReactive, color = robotReactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Reactive - MODE 1") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# frequency figure
+m2 <- pivotCom %>%
+  filter(mode == 2) %>%
+  ggplot(aes(x = robotReactive, y = mean, fill = robotReactive, color = robotReactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Reactive - MODE 2") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# frequency figure
+m3 <- pivotCom %>%
+  filter(mode == 3) %>%
+  ggplot(aes(x = robotReactive, y = mean, fill = robotReactive, color = robotReactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Reactive - MODE 3") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+# + coord_flip()
+
+# put plots together 
+ggarrange(m1, m2, m3, 
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+
+
+### ROBOT PROACTIVE Average
+
+# ALL MODES
+pivotSDA <- surveyDem.df %>%
+  dplyr::select(robotProactive) %>%
+  dplyr::group_by(robotProactive) %>%
+  dplyr::summarise(total = length(robotProactive)) %>%
+  ungroup() %>% 
+  dplyr::mutate(mean = round((total/sum(total))*100, digits = 1))
+
+# completing conditions
+pivotSDA$robotProactive <- as.numeric(pivotSDA$robotProactive)
+pivotSDA <- complete(pivotSDA, robotProactive = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replacing numeric for character answers
+pivotSDR <- replaceAnswer(pivotSDA, 1)
+
+# plot COMPLETING TASK All participants 
+ggplot(data = pivotSDR, aes(x = robotProactive, y = mean, fill = robotProactive, color = robotProactive)) +    # print bar chart
+  lims(y = c(0, 30)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Proactive - ALL PARTICIPANTS") +
+  xlab("Evaluation") + ylab("Mean") +
+  #theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# For each MODE 
+
+# get df with average for all three modes 
+for (i in 1:3){
+  # get df for each mode
+  pivotSD <- surveyDem.df %>%
+    dplyr::filter(mode == i) %>%
+    dplyr::select(robotProactive) %>%
+    dplyr::group_by(robotProactive) %>%
+    dplyr::summarise(total = length(robotProactive)) %>%
+    ungroup() %>% 
+    dplyr::mutate(mean = round((total/sum(total))*100, digits = 1), mode = i)
+  
+  # joint df
+  if (i == 1){
+    pivotCom <- pivotSD
+  } else {
+    pivotCom <- rbind(pivotCom, pivotSD)
+  }
+}
+
+# complete pivotCom (add data to empty categories)
+pivotCom$robotProactive <- as.numeric(pivotCom$robotProactive)
+pivotCom <- complete(pivotCom, mode, robotProactive = full_seq(fixAns, period = 1), fill = list(total = 0, mean = 0))
+
+# replace numeric for characters answers in pivotCom
+for (i in 1:lenAns){
+  pivotCom$robotProactive[pivotCom$robotProactive == i] <-  charAns[i]
+} 
+
+# PLOT - Robot Understood TASK Average & MODE
+
+# frequency figure
+m1 <- pivotCom %>%
+  filter(mode == 1) %>%
+  ggplot(aes(x = robotProactive, y = mean, fill = robotProactive, color = robotProactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Proactive - MODE 1") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# frequency figure
+m2 <- pivotCom %>%
+  filter(mode == 2) %>%
+  ggplot(aes(x = robotProactive, y = mean, fill = robotProactive, color = robotProactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Proactive - MODE 2") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+# + coord_flip()
+
+# frequency figure
+m3 <- pivotCom %>%
+  filter(mode == 3) %>%
+  ggplot(aes(x = robotProactive, y = mean, fill = robotProactive, color = robotProactive)) +    # print bar chart
+  lims(y = c(0, 40)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(legend.position = "none")  + 
+  ggtitle("Robot Should be More Proactive - MODE 3") +
+  xlab("Evaluation") + ylab("Mean") +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x=element_text(angle = 50, hjust=1))
+# + coord_flip()
+
+# put plots together 
+ggarrange(m1, m2, m3, 
+          labels = c("1", "2", "3"),
+          ncol = 1, nrow = 3)
+## Demographics data ----------------------------------------------------------------
+
+install.packages("psych")
+library(psych)
+
+# descriptive statistics 
+
+### AGE
+# age - ALL
+describe(surveyDem.df$age)
+
+# age - MODE
+for (i in 1:3){
+  
+  # filter data frame
+  pivotD <- surveyDem.df %>%
+    dplyr::filter(mode == i)
+  
+  # age by mode
+  print(paste("MODE = ", i)) 
+  print(describe(pivotD$age))
+}
+
+# ANOVA - AGE x MODE
+
+# compute the analysis of variance
+res.aov <- aov(age ~ mode, data = surveyDem.df)
+# summary of the analysis
+summary(res.aov)
+
+# GENDER
+
+# Frequency ALL
+
+# Frequency MODE
+
+
+## Integration of data types test ----------------------------------------------------------------
+
+## body posture
+
+### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
+pivotIB <- body.df %>%
+  filter(item %in% c(2, 5) & p == 119) %>%
+  group_by(p, item, bodyPosture) %>%
+  summarise(total = length(bodyPosture)) %>%
+  na.omit(bodyPosture) %>%
+  group_by(item, bodyPosture) # %>% 
+  # summarise(freq = sum(total)) %>%
+  # mutate(pMode = 16) %>% # Fix the number of participants per mode 
+  # mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+ggplot(data = pivotIB, aes(x = factor(item), y = total, fill = bodyPosture)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Body Posture (BPH) - Frequency Items x Object - P119") +
+  xlab("Item") + ylab("Frequency") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Metrics")
+
+
+### frequency table - ITEMS x BODY POSTURE x OBJECT x MODES
+pivotIB <- body.df %>%
+  filter(item %in% c(2, 5) & p == 119) %>%
+  group_by(p, item, handGesture) %>%
+  summarise(total = length(handGesture)) %>%
+  na.omit(handGesture) %>%
+  group_by(item, handGesture) # %>% 
+# summarise(freq = sum(total)) %>%
+# mutate(pMode = 16) %>% # Fix the number of participants per mode 
+# mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+ggplot(data = pivotIB, aes(x = factor(item), y = total, fill = handGesture)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Hand Gesture (BPH) - Frequency Items x Object - P119") +
+  xlab("Item") + ylab("Frequency") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Metrics")
+
+
+# need to complete table [add zeroes if items have no entries]
+
+### frequency table - ITEMS x HEAD EYE FACIAL x OBJECT x MODES
+pivotIB <- head.df %>%
+  filter(item %in% c(2, 5) & p == 119) %>%
+  group_by(p, item, headEye) %>%
+  summarise(total = length(headEye)) %>%
+  na.omit(headEye) %>%
+  group_by(item, headEye) # %>% 
+# summarise(freq = sum(total)) %>%
+# mutate(pMode = 16) %>% # Fix the number of participants per mode 
+# mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+ggplot(data = pivotIB, aes(x = factor(item), y = total, fill = headEye)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Head Eye Movements (HEF) - Frequency Items x Object - P119") +
+  xlab("Item") + ylab("Frequency") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Metrics")
+
+
+### frequency table - ITEMS x HEAD EYE FACIAL x OBJECT x MODES
+pivotIB <- head.df %>%
+  filter(item %in% c(2, 5) & p == 119) %>%
+  group_by(p, item, facialExpress) %>%
+  summarise(total = length(facialExpress)) %>%
+  na.omit(facialExpress) %>%
+  group_by(item, facialExpress) # %>% 
+# summarise(freq = sum(total)) %>%
+# mutate(pMode = 16) %>% # Fix the number of participants per mode 
+# mutate(mean = round(freq/pMode, 1))
+
+# frequency figure
+ggplot(data = pivotIB, aes(x = factor(item), y = total, fill = facialExpress)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  #theme(legend.position = "none")  + 
+  ggtitle("Facial Expressions (HEF) - Frequency Items x Object - P119") +
+  xlab("Item") + ylab("Frequency") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Metrics")
+
+
+### frequency table - ITEMS x SPEECH METRICS x OBJECT x MODES
+pivotIS <- speech.df %>%
+  filter(item %in% c(2, 5) & p == 119) %>%
+  group_by(p, item, speechMetrics) %>%
+  summarise(total = length(speechMetrics)) %>%
+  na.omit(speechMetrics) %>%
+  group_by(item, speechMetrics) # %>% 
+  # summarise(freq = sum(total)) %>%
+  # mutate(mean = round(freq/participants, 1))
+
+# frequency figure
+ggplot(data = pivotIS, aes(x = factor(item), y = total, fill = speechMetrics)) +    # print bar chart
+  geom_bar(stat = 'identity', position = 'dodge') +
+  ggtitle("Speech Metrics (SPEECH) - Frequency Items x Object") +
+  xlab("Item (Object)") + ylab("Mean") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) +
+  scale_fill_discrete(name = "Items")
+
+
+# word frequency - ITEM 5
+# get vector to feed wordCloud function
+pv1 <- speech.df %>%
+  filter(item == 5 & p == 119)
+pvText1 <- pv1$speech
+# call wordCloud function
+wordCl1 <- wordFreq(pvText1) # return elements from wordCloud function
+# get frequency table term-document matrix 
+df1 <- wordCl1[[2]] # frequency table
+# remove word 'laugh'
+df1 <- df1[!(df1$word == "laugh"), ]
+dtm1 <- wordCl1[[1]] # matrix
+
+df_I5 <- df1
+wordcloud(words = df_I5$word, freq = df_I5$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
+          rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"),
+          scale=c(2.5, 0.5))
+
+#frequency table 
+m1 <- ggplot(data = df_I5[1:10, ], aes(x=reorder(word, -freq), y=freq, fill=freq)) +
+  lims(y = c(0, 30)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Most frequent words (SPEECH) - Item 5 x P119") +
+  xlab("Mode") + ylab("Frequency") +
+  theme(legend.position="none") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+
+# word frequency - ITEM 2
+# get vector to feed wordCloud function
+pv1 <- speech.df %>%
+  filter(item == 2 & p == 119)
+pvText1 <- pv1$speech
+# call wordCloud function
+wordCl1 <- wordFreq(pvText1) # return elements from wordCloud function
+# get frequency table term-document matrix 
+df1 <- wordCl1[[2]] # frequency table
+# remove word 'laugh'
+df1 <- df1[!(df1$word == "laugh"), ]
+dtm1 <- wordCl1[[1]] # matrix
+
+df_I2 <- df1
+wordcloud(words = df_I2$word, freq = df_I2$freq, min.freq = 1, max.words = 100, random.order = FALSE, 
+          rot.per = 0.35, colors = wes_palette("Zissou1", 8, type = "continuous"),
+          scale=c(2.5, 0.5))
+
+#frequency table 
+m2 <- ggplot(data = df_I2[1:10, ], aes(x=reorder(word, -freq), y=freq, fill=freq)) +
+  lims(y = c(0, 30)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Most frequent words (SPEECH) - Item 2 x P119") +
+  xlab("Mode") + ylab("Frequency") +
+  theme(legend.position="none") +
+  theme(axis.text.x=element_text(angle = 50, hjust=1)) 
+
+# put plots together 
+ggarrange(m2, m1,
+          labels = c("1", "2"),
+          ncol = 1, nrow = 2)
+
+# duration Items
+durItems <- items.df %>%
+  filter(itemBetween %in% c(2, 5) & p == 119) %>%
+  mutate(dur = (end - start))
+durTest <- strptime(durItems$dur, format='%H:%M:%S')
+timSec <- durTest$hour * 3600 + durTest$min * 60 + durTest$sec
+durItems$dur[1] <- timSec[1]
+durItems$dur[2] <- timSec[2]
+
+# BARPLOT - Duration session PARTICIPANTS
+ggplot(data = durItems, aes(x = itemBetween, y = dur/60, fill = itemBetween)) +
+  geom_bar(stat="identity") + 
+  ggtitle("Durations items") +
+  theme(legend.position = "none")  + 
+  xlab("Items") + ylab("Time (minutes)")
+
+
+# duration Items - ALL PARTICIPANTS t-test
+durI <- items.df %>%
+  filter(itemBetween %in% c(2, 5), mode >1) %>%
+  mutate(dur = (end - start)) %>%
+  select(p, mode, dur, itemBetween) %>% 
+  group_by(p, mode, itemBetween) %>% 
+  summarise_all(.funs = sum, na.rm=T)
+durIA <- strptime(durI$dur, format='%H:%M:%S')
+tSecA <- durIA$hour * 3600 + durIA$min * 60 + durIA$sec
+
+# replace data in data frame 
+len <- length(tSecA)
+for (i in 1:len){
+  durI$dur[i] <- tSecA[i]  
+}
+durI2 <- durI %>%
+  filter(itemBetween == 2)
+durI5 <- durI %>%
+  filter(itemBetween == 5)
+
+# t test
+t.test(durI2$dur, durI5$dur, paired = TRUE, alternative = "two.sided")
+describe(durI2)
+
+
+# Create a box-plot
+bxp <- ggboxplot(
+  durI, x = "itemBetween", y = "dur", 
+  ylab = "Duration (seconds)", xlab = "Items", add = "jitter"
+)
+
+
+test <- durI %>%
+  group_by(itemBetween) %>%
+  summarize(mean_length = mean(dur),
+            sd_length = sd(dur))
