@@ -69,6 +69,10 @@ freqMode <- modes.df %>%
 # set global participant variable
 participants <- length(file.list)
 
+# error items (list of items in which the robot committed and error for mode 1 & 2)
+errorIt <- c(5, 7, 8, 10, 11, 12)
+noErrorIt <- c(1, 2, 3, 4, 6, 9)
+
 # initialize empty lists objects
 items.list <- vector("list", length(file.list))
 head.list <- vector("list", length(file.list))
@@ -300,6 +304,29 @@ for (i in pId){
     }
   }
 }
+
+### add item error column to the three data frames
+body.df <- body.df %>% 
+  mutate(error = 
+           case_when(mode > 1 & item %in% errorIt ~ 1,
+                     mode > 1 & item %in% noErrorIt ~ 0,
+                     mode == 1 & item > 0 ~ 0)
+)
+
+head.df <- head.df %>% 
+  mutate(error = 
+           case_when(mode > 1 & item %in% errorIt ~ 1,
+                     mode > 1 & item %in% noErrorIt ~ 0,
+                     mode == 1 & item > 0 ~ 0)
+  )
+
+speech.df <- speech.df %>% 
+  mutate(error = 
+           case_when(mode > 1 & item %in% errorIt ~ 1,
+                     mode > 1 & item %in% noErrorIt ~ 0,
+                     mode == 1 & item > 0 ~ 0)
+  )
+
 
 ## extracting data from pdf (survey and demographics)
 
